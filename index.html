@@ -54,6 +54,48 @@
         width: 280px; /* 设置宽度 */
         height: 280px; /* 设置高度 */
     }
+        /* Pagination controls */
+        .pagination {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            margin-top: 14px;
+        }
+        .pagination button {
+            min-width: 32px;
+            height: 32px;
+            padding: 0 10px;
+            border: 1px solid #d0d0d0;
+            background: #fff;
+            color: #333;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: inherit;
+            line-height: 1;
+            transition: all 0.15s ease;
+        }
+        .pagination button:hover:not(:disabled) {
+            border-color: #888;
+            background: #f5f5f5;
+        }
+        .pagination button.active {
+            background: #2c3e50;
+            border-color: #2c3e50;
+            color: #fff;
+            font-weight: 600;
+            cursor: default;
+        }
+        .pagination button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .pagination .page-info {
+            margin-left: 6px;
+            font-size: 13px;
+            color: #888;
+        }
     </style>
 </head>
 
@@ -107,7 +149,7 @@
             </section>
             <section>
                 <h2>Recent News & Activities</h2>
-                <ul>
+                <ul id="news-list">
                     <li><strong>[2026.05]</strong> One paper got accepted by IEEE TMM. </li>
                     <li><strong>[2026.05]</strong> One paper got accepted by ICML 2026. </li>
                     <li><strong>[2025.11]</strong> One paper got accepted by AAAI 2026. </li>
@@ -128,12 +170,12 @@
                     <li><strong>[2022.08]</strong> One paper got accepted by PR. </li>
                     <li><strong>[2021.02]</strong> One paper got accepted by ISPRS JPRS. </li>
                 </ul>
-                <!-- <div class="styles_showMore__JvZFs"><button>Show More</button></div> -->
+                <div id="news-pagination" class="pagination"></div>
             </section>
             <section>
                 <h2>Selected Publications<br class="publication-list_mobileBreak__24vsO"></h2>
                 <div class="publication-list_smallText__pUJXB">* denotes equal contribution, # denotes corresponding author.</div>
-                <div>
+                <div id="pub-list">
                     <div class="publication_publication__1Icb_">
                         <div class="publication_image__1EUuC"><img src="images/MAC-NeRF.png" itemprop="image" alt="PontTuset" width="180" height="100"
                                          style="border-style: none"></div>
@@ -324,7 +366,8 @@
                             </div>
                         </div>
                     </div>
-
+                </div>
+                <div id="pub-pagination" class="pagination"></div>
             </section>
             <!--<section>
                 <h2>Experience</h2>
@@ -372,11 +415,96 @@
                     </li>
                 </ul>
                 <div id="map-container" style="width: 300px; height: 225px; margin: 0 auto;">
-                <script type="text/javascript" id="clstr_globe" src="//clustrmaps.com/globe.js?d=_XlhgCKAdzSnFNLerFUexLEjoGUSBIvxGpciIVAaRv4"></script>
+                <script type="text/javascript" id="clstr_globe" src="https://cdn.clustrmaps.com/globe.js?d=_XlhgCKAdzSnFNLerFUexLEjoGUSBIvxGpciIVAaRv4"></script>
                 </div>
             </section>
         </div>
     </div>
+    <script>
+        (function () {
+            // Generic paginator: hides items beyond the current page and renders controls.
+            function setupPagination(opts) {
+                var container = document.getElementById(opts.listId);
+                var pager = document.getElementById(opts.pagerId);
+                if (!container || !pager) return;
+
+                var items = opts.itemSelector
+                    ? Array.prototype.slice.call(container.querySelectorAll(opts.itemSelector))
+                    : Array.prototype.slice.call(container.children);
+                var perPage = opts.perPage || 10;
+                var totalPages = Math.ceil(items.length / perPage);
+
+                // No pagination needed if everything fits on one page.
+                if (totalPages <= 1) return;
+
+                var current = 1;
+
+                function showPage(page) {
+                    current = page;
+                    var start = (page - 1) * perPage;
+                    var end = start + perPage;
+                    items.forEach(function (el, i) {
+                        el.style.display = (i >= start && i < end) ? '' : 'none';
+                    });
+                    renderControls();
+                }
+
+                function makeBtn(label, page, opt) {
+                    opt = opt || {};
+                    var b = document.createElement('button');
+                    b.textContent = label;
+                    if (opt.active) b.className = 'active';
+                    if (opt.disabled) b.disabled = true;
+                    if (!opt.disabled && !opt.active) {
+                        b.addEventListener('click', function () {
+                            showPage(page);
+                            // Scroll the section heading into view on page change.
+                            var section = container.closest('section');
+                            if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        });
+                    }
+                    return b;
+                }
+
+                function renderControls() {
+                    pager.innerHTML = '';
+                    pager.appendChild(makeBtn('‹ Prev', current - 1, { disabled: current === 1 }));
+                    for (var p = 1; p <= totalPages; p++) {
+                        pager.appendChild(makeBtn(String(p), p, { active: p === current }));
+                    }
+                    pager.appendChild(makeBtn('Next ›', current + 1, { disabled: current === totalPages }));
+
+                    var info = document.createElement('span');
+                    info.className = 'page-info';
+                    info.textContent = items.length + ' items';
+                    pager.appendChild(info);
+                }
+
+                showPage(1);
+            }
+
+            function init() {
+                setupPagination({
+                    listId: 'news-list',
+                    pagerId: 'news-pagination',
+                    itemSelector: 'li',
+                    perPage: 10
+                });
+                setupPagination({
+                    listId: 'pub-list',
+                    pagerId: 'pub-pagination',
+                    itemSelector: '.publication_publication__1Icb_',
+                    perPage: 10
+                });
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+        })();
+    </script>
 </body>
 
 </html>
